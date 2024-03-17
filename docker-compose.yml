@@ -1,0 +1,44 @@
+version: '3.8'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    networks:
+      - kafka-network
+
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    networks:
+      - kafka-network
+
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: kafka_messages
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    networks:
+      - kafka-network
+    volumes:
+      - ./postgres-init:/docker-entrypoint-initdb.d
+
+  pyspark-consumer:
+    build: ./docker
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      POSTGRES_URL: jdbc:postgresql://postgres/kafka_messages
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    depends_on:
+      - kafka
+      - postgres
+    networks:
+      - kafka-network
+
+networks:
+  kafka-network:
+    driver: bridge
